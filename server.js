@@ -17,7 +17,7 @@ var boardServer = function (req, res) {
 }
 
 var server = http.createServer(boardServer);
-server.listen(6112);
+server.listen(8000);
 
 var socket = io.listen(server);
 socket.on('connection', function(client){

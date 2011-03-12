@@ -110,7 +110,7 @@ function setupCanvas(canvas) {
 
 window.onload = function () {
   var canvas = document.getElementById("c"),
-      socket = new io.Socket("", {port: 6112}),
+      socket = new io.Socket("", {port: 8000}),
       ctx = setupCanvas(canvas),
       myPen = new Pen(ctx, prompt("What's your color?"), socket);
 
