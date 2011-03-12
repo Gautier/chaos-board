@@ -1,0 +1,8 @@
+{
+  "name": "ChaosBoard",
+  "version" : "0.0.2",
+  "main" : "server.js"
+  "dependencies": {
+    "socket.io" : ">=0.6.16"
+  }
+}

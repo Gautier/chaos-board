@@ -1,0 +1,27 @@
+var http = require('http'),
+    fs = require('fs');
+    url = require('url');
+    io = require('socket.io');
+
+var boardServer = function (req, res) {
+  var src = "index.html";
+
+  if (url.parse(req.url).pathname == "/chaosboard.js"){
+    src = "chaosboard.js";
+  }
+
+  res.writeHead(200, {'Content-Type': 'text/html'});
+  fs.readFile(src, function (err, data) {
+    res.end(data);
+  });
+}
+
+var server = http.createServer(boardServer);
+server.listen(6112, 8000);
+
+var socket = io.listen(server);
+socket.on('connection', function(client){
+  client.on('message', function (data) {
+    client.broadcast(data);
+  });
+});
