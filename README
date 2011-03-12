@@ -1,0 +1,32 @@
+============
+Installation
+============
+
+install nodejs
+--------------
+
+See https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager,
+but note that some distribution already have binary packages
+(https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager).
+
+Get code
+--------
+
+  $ git clone https://github.com/gautier/chaos-board.git
+
+install npm
+-----------
+
+  $ curl http://npmjs.org/install.sh | sudo sh
+
+install dependencies
+--------------------
+
+  $ npm install socket.io
+
+run server
+----------
+
+  $ cd chaos-board/
+  $ node server.js
+
