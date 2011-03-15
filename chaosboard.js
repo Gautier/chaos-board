@@ -48,9 +48,64 @@ function Pen(ctx, color, socket) {
 }
 
 function setupCanvas(canvas) {
-  var width = canvas.width = 800;
-  var height = canvas.height = 600;
-  return canvas.getContext("2d");
+  var width = canvas.width = window.innerWidth;
+  var height = canvas.height = window.innerHeight;
+  var ctx = canvas.getContext("2d");
+
+  /*
+   * http://code.google.com/p/chromium/issues/detail?id=59446
+   */
+  function chromeOnResizeFix(F) {
+    var resizeList = {};
+
+    return function () {
+      var newWidth = window.innerWidth,
+          newHeight = window.innerHeight;
+
+      var resizeKey = "" + newWidth + newHeight + width + height;
+      if (!resizeKey in resizeList) {
+        resizeList[resizeKey] = true;
+      }
+
+      resizeList[resizeKey] = !resizeList[resizeKey];
+      if (resizeList[resizeKey]) {
+        return;
+      }
+
+      return F(newWidth, newHeight);
+    }
+  }
+
+  function filterProperResize(F) {
+    return function (newWidth, newHeight) {
+      if (newWidth == width && newHeight == height)
+        return;
+
+      if (newWidth == 0 || newHeight == 0)
+        return;
+
+      return F(newWidth, newHeight);
+    };
+  }
+
+  window.onresize = chromeOnResizeFix(filterProperResize(function (newWidth, newHeight) {
+    var img = new Image();
+    img.src = canvas.toDataURL();
+    img.onload = function () {
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+
+      var sw = Math.min(newWidth, width);
+      var sh = Math.min(newHeight, height);
+
+      ctx.drawImage(img, 0, 0, sw, sh, 0, 0, sw, sh);
+
+      width = newWidth;
+      height = newHeight;
+    }
+  }));
+
+  return ctx;
 }
 
 window.onload = function () {
@@ -80,8 +135,8 @@ window.onload = function () {
     if (!clicked) return;
 
     e = normalizeEvent(e);
-    var x = e.x - canvas.offsetLeft,
-        y = e.y - canvas.offsetTop;
+    var x = e.x,
+        y = e.y;
 
     myPen.down(x, y)
   }
@@ -89,8 +144,8 @@ window.onload = function () {
   canvas.onmousemove = function (e) {
     if (!clicked)  return;
     e = normalizeEvent(e);
-    var x = e.x - canvas.offsetLeft,
-        y = e.y - canvas.offsetTop;
+    var x = e.x,
+        y = e.y;
 
     myPen.move(x, y);
   }
