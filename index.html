@@ -5,7 +5,12 @@
   <script type="text/javascript" src="chaosboard.js"></script>
 </head>
 <body>
-  <canvas id="c" style="position: absolute; top:0px; left:0px;background: #000;"></canvas>
+  <form id="login-form" action="#">
+    <label for="login-color">What is your color</label>
+    <input type="text" name="login-color" />
+    <input type="submit" value="login"/>
+  </form>
+  <canvas id="c" style="display: none; position: absolute; top:0px; left:0px;background: #000;"></canvas>
 </body>
 </html>
 
