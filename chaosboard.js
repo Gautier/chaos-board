@@ -1,6 +1,6 @@
 var canvas = null,
-    myColor = null;
-
+    windowWidth = null,
+    windowHeight = null;
 
 function normalizeEvent (e) {
   var ev = {x: 0, y: 0};
@@ -52,8 +52,8 @@ function Pen(ctx, color, socket) {
 }
 
 function setupCanvas() {
-  var width = canvas.width = window.innerWidth;
-  var height = canvas.height = window.innerHeight;
+  var width = canvas.width = windowWidth;
+  var height = canvas.height = windowHeight;
   var ctx = canvas.getContext("2d");
 
   /*
@@ -113,20 +113,23 @@ function setupCanvas() {
 }
 
 window.onload = function () {
+  windowWidth = window.innerWidth;
+  windowHeight = window.innerHeight;
+
   canvas = document.getElementById("c");
   var form = document.forms["login-form"];
 
   form.onsubmit = function () {
-    myColor = form["login-color"].value;
+    var myColor = form["login-color"].value;
     form.style.display = "none";
     canvas.style.display = "block";
 
-    initBoard();
+    initBoard(myColor);
     return false;
   }
 }
 
-function initBoard () {
+function initBoard (myColor) {
   var socket = new io.Socket("", {port: 8000}),
     ctx = setupCanvas(),
     myPen = new Pen(ctx, myColor, socket);
