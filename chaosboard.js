@@ -1,7 +1,3 @@
-var canvas = null,
-    windowWidth = null,
-    windowHeight = null;
-
 function normalizeEvent (e) {
   var ev = {x: 0, y: 0};
   if (!e) var e = window.event;
@@ -17,16 +13,28 @@ function normalizeEvent (e) {
   return ev;
 }
 
-function Pen(ctx, color, socket) {
+function parseCoords (location) {
+  var coords = location.hash.substr(1).split(",");
+  if (coords.length == 2) {
+    coords[0] = +coords[0];
+    coords[1] = +coords[1];
+
+    if (coords[0] != NaN && coords[1] != NaN) {
+      return {x: coords[0], y: coords[1]};
+    }
+  }
+
+  return {x: 0, y: 0};
+}
+
+
+function Pen(ctx, color) {
   var last_point = {x: 0, y: 0};
 
   this.down = function (x, y) {
     last_point.x = x;
     last_point.y = y;
 
-    if (socket) {
-      socket.send({down: true, x: x, y: y, color: color});
-    }
   }
 
   this.move = function (x, y) {
@@ -34,10 +42,6 @@ function Pen(ctx, color, socket) {
 
     last_point.x = x;
     last_point.y = y;
-
-    if (socket) {
-      socket.send({down: false, x: x, y: y, color: color});
-    }
   }
 
   function drawPoint(x, y) {
@@ -48,150 +52,180 @@ function Pen(ctx, color, socket) {
     ctx.moveTo(last_point.x, last_point.y);
     ctx.lineTo(x, y);
     ctx.stroke();
+
   }
 }
 
-function setupCanvas() {
-  var width = canvas.width = windowWidth;
-  var height = canvas.height = windowHeight;
-  var ctx = canvas.getContext("2d");
+(function (window) {
+  var canvas = null,
+      windowWidth = null,
+      windowHeight = null,
+      coords = parseCoords(document.location);
 
-  /*
-   * http://code.google.com/p/chromium/issues/detail?id=59446
-   */
-  function chromeOnResizeFix(F) {
-    var resizeList = {};
+  function onChangedCoords() {
+    coords = parseCoords(document.location);
 
-    return function () {
-      var newWidth = window.innerWidth,
-          newHeight = window.innerHeight;
+    // TODO: redraw
+  }
 
-      var resizeKey = "" + newWidth + newHeight + width + height;
-      if (!resizeKey in resizeList) {
-        resizeList[resizeKey] = true;
+  function setupCanvas() {
+    var width = canvas.width = windowWidth;
+    var height = canvas.height = windowHeight;
+    var ctx = canvas.getContext("2d");
+
+    /*
+     * http://code.google.com/p/chromium/issues/detail?id=59446
+     */
+    function chromeOnResizeFix(F) {
+      var resizeList = {};
+
+      return function () {
+        var newWidth = window.innerWidth,
+            newHeight = window.innerHeight;
+
+        var resizeKey = "" + newWidth + newHeight + width + height;
+        if (!resizeKey in resizeList) {
+          resizeList[resizeKey] = true;
+        }
+
+        resizeList[resizeKey] = !resizeList[resizeKey];
+        if (resizeList[resizeKey]) {
+          return;
+        }
+
+        return F(newWidth, newHeight);
       }
+    }
 
-      resizeList[resizeKey] = !resizeList[resizeKey];
-      if (resizeList[resizeKey]) {
-        return;
+    function filterProperResize(F) {
+      return function (newWidth, newHeight) {
+        if (newWidth == width && newHeight == height)
+          return;
+
+        if (newWidth == 0 || newHeight == 0)
+          return;
+
+        return F(newWidth, newHeight);
+      };
+    }
+
+    window.onresize = chromeOnResizeFix(filterProperResize(function (newWidth, newHeight) {
+      var img = new Image();
+      img.src = canvas.toDataURL();
+      img.onload = function () {
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        var sw = Math.min(newWidth, width);
+        var sh = Math.min(newHeight, height);
+
+        ctx.drawImage(img, 0, 0, sw, sh, 0, 0, sw, sh);
+
+        width = newWidth;
+        height = newHeight;
       }
+    }));
 
-      return F(newWidth, newHeight);
+    return ctx;
+  }
+
+  window.onload = function () {
+    windowWidth = window.innerWidth;
+    windowHeight = window.innerHeight;
+
+    canvas = document.getElementById("c");
+    var form = document.forms["login-form"];
+
+    form.onsubmit = function () {
+      var myColor = form["login-color"].value || "red";
+      form.style.display = "none";
+      canvas.style.display = "block";
+
+      initBoard(myColor);
+      return false;
     }
   }
 
-  function filterProperResize(F) {
-    return function (newWidth, newHeight) {
-      if (newWidth == width && newHeight == height)
-        return;
+  function initBoard (myColor) {
+    var socket = new io.Socket("", {port: 8000}),
+        ctx = setupCanvas(),
+        myPen = new Pen(ctx, myColor, socket);
 
-      if (newWidth == 0 || newHeight == 0)
-        return;
+    document.ontouchstart = function (e) {
+      var x = e.touches[0].pageX,
+          y = e.touches[0].pageY;
 
-      return F(newWidth, newHeight);
-    };
-  }
-
-  window.onresize = chromeOnResizeFix(filterProperResize(function (newWidth, newHeight) {
-    var img = new Image();
-    img.src = canvas.toDataURL();
-    img.onload = function () {
-      canvas.width = newWidth;
-      canvas.height = newHeight;
-
-      var sw = Math.min(newWidth, width);
-      var sh = Math.min(newHeight, height);
-
-      ctx.drawImage(img, 0, 0, sw, sh, 0, 0, sw, sh);
-
-      width = newWidth;
-      height = newHeight;
+      myPen.down(x, y);
+      socket.send({down: true,
+                   x: x + coords.x,
+                   y: y + coords.y,
+                   color: myColor});
     }
-  }));
 
-  return ctx;
-}
+    document.ontouchmove = function (e) {
+      var x = e.touches[0].pageX,
+          y = e.touches[0].pageY;
 
-window.onload = function () {
-  windowWidth = window.innerWidth;
-  windowHeight = window.innerHeight;
+      myPen.move(x, y)
+      socket.send({down: false,
+                   x: x + coords.x,
+                   y: y + coords.y,
+                   color: myColor});
+    }
 
-  canvas = document.getElementById("c");
-  var form = document.forms["login-form"];
+    var clicked = false;
+    canvas.onclick = function (e) {
+      clicked = !clicked;
 
-  form.onsubmit = function () {
-    var myColor = form["login-color"].value;
-    form.style.display = "none";
-    canvas.style.display = "block";
+      if (!clicked) return;
 
-    initBoard(myColor);
-    return false;
+      e = normalizeEvent(e);
+      var x = e.x,
+          y = e.y;
+
+      myPen.down(x, y)
+      socket.send({down: true,
+                   x: x + coords.x,
+                   y: y + coords.y,
+                   color: myColor});
+    }
+
+    canvas.onmousemove = function (e) {
+      if (!clicked)  return;
+      e = normalizeEvent(e);
+      var x = e.x,
+          y = e.y;
+
+      myPen.move(x, y);
+      socket.send({down: false,
+                   x: x + coords.x,
+                   y: y + coords.y,
+                   color: myColor});
+    }
+
+    socket.on('connect', function(){
+    });
+
+    var pens = {};
+    socket.on('message', function(data){
+        var x = data.x - coords.x,
+            y = data.y - coords.y;
+
+        if (!(data.color in pens)) {
+          pens[data.color] = new Pen(ctx, data.color);
+        }
+        var pen = pens[data.color];
+
+        if (data.down) {
+          pen.down(x, y);
+        } else {
+          pen.move(x, y);
+        }
+    });
+
+    socket.on('disconnect', function(){
+    });
+
+    socket.connect();
   }
-}
-
-function initBoard (myColor) {
-  var socket = new io.Socket("", {port: 8000}),
-    ctx = setupCanvas(),
-    myPen = new Pen(ctx, myColor, socket);
-
-  document.ontouchstart = function (e) {
-    var x = e.touches[0].pageX,
-        y = e.touches[0].pageY;
-
-    myPen.down(x, y);
-  }
-
-  document.ontouchmove = function (e) {
-    var x = e.touches[0].pageX,
-        y = e.touches[0].pageY;
-
-    myPen.move(x, y)
-  }
-
-  var clicked = false;
-  canvas.onclick = function (e) {
-    clicked = !clicked;
-
-    if (!clicked) return;
-
-    e = normalizeEvent(e);
-    var x = e.x,
-        y = e.y;
-
-    myPen.down(x, y)
-  }
-
-  canvas.onmousemove = function (e) {
-    if (!clicked)  return;
-    e = normalizeEvent(e);
-    var x = e.x,
-        y = e.y;
-
-    myPen.move(x, y);
-  }
-
-  socket.on('connect', function(){
-  });
-
-  var pens = {};
-  socket.on('message', function(data){
-      var x = data.x,
-          y = data.y;
-
-      if (!(data.color in pens)) {
-        pens[data.color] = new Pen(ctx, data.color);
-      }
-      var pen = pens[data.color];
-
-      if (data.down) {
-        pen.down(x, y);
-      } else {
-        pen.move(x, y);
-      }
-  });
-
-  socket.on('disconnect', function(){
-  });
-
-  socket.connect();
-}
+})(window);
