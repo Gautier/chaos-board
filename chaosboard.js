@@ -171,6 +171,7 @@ function Pen(ctx, color) {
                    x: x + coords.x,
                    y: y + coords.y,
                    color: myColor});
+      e.preventDefault() ;
     }
 
     var clicked = false;
