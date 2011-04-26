@@ -205,6 +205,9 @@ function Pen(ctx, color) {
     }
 
     socket.on('connect', function(){
+      // XXX bad way of doing this
+      var boardId = document.location.pathname.split("/")[2];
+      socket.send({command: "connect", boardId: boardId});
     });
 
     var pens = {};
