@@ -19,9 +19,18 @@ var boardServer = function (req, res) {
 var server = http.createServer(boardServer);
 server.listen(8000);
 
+
+var drawingQueue = [];
+
 var socket = io.listen(server);
 socket.on('connection', function(client){
+  // push the saved drawings
+  for(var i = 0; i < drawingQueue.length; i++) {
+    client.send(drawingQueue[i]);
+  }
+
   client.on('message', function (data) {
+    drawingQueue.push(data);
     client.broadcast(data);
   });
 });
