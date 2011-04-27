@@ -68,7 +68,7 @@ socket.on('connection', function(client){
         default:
           break;
       }
-    } else {
+    } else if (board) {
       board.drawingQueue.push(data);
       db.saveBoard(board);
       var otherClients = clients[board.boardId];
@@ -81,7 +81,9 @@ socket.on('connection', function(client){
   });
 
   client.on('disconnect', function() {
-    clients[board.boardId].pop(client);
+    if (board) {
+      clients[board.boardId].pop(client);
+    }
   });
 
 });
