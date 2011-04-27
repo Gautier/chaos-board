@@ -1,32 +1,61 @@
-var uuid = require('node-uuid');
+var uuid = require('node-uuid'),
+   sys = require('sys'),
+   mongodb = require('mongodb');
 
-var dbStore = {};
+var mongoClient = new mongodb.Db('chaos-board', new mongodb.Server("127.0.0.1", 27017, {}));
 
 var db = function () {
+  var insertBoard = null;
+  var getBoard = null;
+  var saveBoard = null;
+
+  mongoClient.open(function(err, p_client) {
+    insertBoard = function(board) {
+      mongoClient.collection('chaos', function (err, collection) {
+        if (err) {
+          console.log("err")
+          console.log(err)
+        }
+        collection.insert(board);
+      });
+    }
+
+    var collection = null;
+    p_client.collection('chaos', function (err, p_collection) {
+      collection = p_collection;
+    });
+
+    var i =0;
+    getBoard = function(boardId, callback) {
+      collection.find({boardId: boardId}, function (err, cursor) {
+        cursor.each(function(err, doc) {
+          if(doc != null) callback(err, doc);
+        }) 
+      });
+    }
+
+    saveBoard = function (board) {
+      collection.save(board, function () {});
+    }
+
+  });
+
+  this.getBoard = function(boardId, callback) {
+    getBoard(boardId, callback);
+  }
 
   this.newBoard = function() {
-    var boardId = uuid();
-    dbStore[boardId] = {drawingQueue: [], boardId: boardId, clients: []};
-    return dbStore[boardId];
+    var board = {drawingQueue: [], boardId: uuid()};
+    insertBoard(board);
+    return board;
   }
 
-  this.getBoardByClient = function(client) {
-    for (var i = 0; i < dbStore.length; i++) {
-      if(dbStore[i].clients.indexOf(client) != -1) {
-        return dbStore[i];
-      }
-    }
-    return null;
-  }
-
-  this.getBoard = function(uuid) {
-    return dbStore[uuid];
-  }
-
-  this.hasBoard = function(uuid) {
-    return uuid in dbStore;
+  this.saveBoard = function(board) {
+    saveBoard(board) 
   }
 
 };
 
 exports.db = new db();
+exports.clients = {};
+

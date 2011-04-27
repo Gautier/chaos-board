@@ -3,6 +3,7 @@ var http = require('http'),
     path = require('path'),
     url = require('url');
     db = require('./db').db;
+    clients = require('./db').clients;
     clutch = require('clutch');
     io = require('socket.io');
 
@@ -53,33 +54,34 @@ socket.on('connection', function(client){
     if ("command" in data) {
       switch(data.command) {
         case "connect":
-            if (!db.hasBoard(data.boardId)) {
-              // XXX: handle error
-              return;
-            }
-            board = db.getBoard(data.boardId);
-            board.clients.push(client);
+            db.getBoard(data.boardId, function (err, doc) {
+              board = doc;
 
-            // push the saved drawings
-            for(var i = 0; i < board.drawingQueue.length; i++) {
-              client.send(board.drawingQueue[i]);
-            }
+              clients[data.boardId] = clients[data.boardId] || [];
+              clients[data.boardId].push(client);
+              // push the saved drawings
+              for(var i = 0; i < board.drawingQueue.length; i++) {
+                client.send(board.drawingQueue[i]);
+              }
+            });
           break;
         default:
           break;
       }
     } else {
       board.drawingQueue.push(data);
-      for (var i = 0; i < board.clients.length; i++) {
-        if (client != board.clients[i]) {
-          board.clients[i].send(data);
+      db.saveBoard(board);
+      var otherClients = clients[board.boardId];
+      for (var i = 0; i < otherClients.length; i++) {
+        if (client != otherClients[i]) {
+          otherClients[i].send(data);
         }
       }
     }
   });
 
   client.on('disconnect', function() {
-    board.clients.pop(client);
+    clients[board.boardId].pop(client);
   });
 
 });
