@@ -49,6 +49,7 @@ var socket = io.listen(server);
 socket.on('connection', function(client){
 
   var board = null;
+  var savingQueueTimer = null;
 
   client.on('message', function (data) {
     if ("command" in data) {
@@ -68,9 +69,16 @@ socket.on('connection', function(client){
         default:
           break;
       }
-    } else if (board) {
+    } else {
       board.drawingQueue.push(data);
-      db.saveBoard(board);
+
+      if(savingQueueTimer != null) {
+        clearTimeout(savingQueueTimer);
+      }
+      savingQueueTimer = setTimeout(function (_board) {
+        db.saveBoard(_board);
+      }, 2000, board)
+
       var otherClients = clients[board.boardId];
       for (var i = 0; i < otherClients.length; i++) {
         if (client != otherClients[i]) {
@@ -81,9 +89,7 @@ socket.on('connection', function(client){
   });
 
   client.on('disconnect', function() {
-    if (board) {
-      clients[board.boardId].pop(client);
-    }
+    clients[board.boardId].pop(client);
   });
 
 });
