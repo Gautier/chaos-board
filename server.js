@@ -48,50 +48,48 @@ server.listen(8000);
 var socket = io.listen(server);
 socket.on('connection', function(client){
 
-  var board = null;
   var savingQueueTimer = null;
 
-  client.on('message', function (data) {
-    if ("command" in data) {
-      switch(data.command) {
-        case "connect":
-            db.getBoard(data.boardId, function (err, doc) {
-              board = doc;
+  function connector (data) {
+    if ("command" in data && data.command == "connect") {
+      db.getBoard(data.boardId, function (err, board) {
 
-              clients[data.boardId] = clients[data.boardId] || [];
-              clients[data.boardId].push(client);
-              // push the saved drawings
-              for(var i = 0; i < board.drawingQueue.length; i++) {
-                client.send(board.drawingQueue[i]);
-              }
-            });
-          break;
-        default:
-          break;
-      }
-    } else {
-      board.drawingQueue.push(data);
+        clients[data.boardId] = clients[data.boardId] || [];
+        clients[data.boardId].push(client);
 
-      if(savingQueueTimer != null) {
-        clearTimeout(savingQueueTimer);
-      }
-      savingQueueTimer = setTimeout(function (_board) {
-        db.saveBoard(_board);
-      }, 2000, board)
-
-      var otherClients = clients[board.boardId];
-      for (var i = 0; i < otherClients.length; i++) {
-        if (client != otherClients[i]) {
-          otherClients[i].send(data);
+        // push the saved drawings
+        for(var i = 0; i < board.drawingQueue.length; i++) {
+          client.send(board.drawingQueue[i]);
         }
-      }
-    }
-  });
 
-  client.on('disconnect', function() {
-    if (board != null) {
-      clients[board.boardId].pop(client);
+        client.on('disconnect', function() {
+          clients[board.boardId].pop(client);
+        });
+
+        client.removeListener("message", connector)
+
+        client.on("message", function (draw_data) {
+          board.drawingQueue.push(draw_data);
+
+          if(savingQueueTimer != null) {
+            clearTimeout(savingQueueTimer);
+          }
+          savingQueueTimer = setTimeout(function (_board) {
+            db.saveBoard(_board);
+          }, 2000, board)
+
+          var otherClients = clients[board.boardId];
+          for (var i = 0; i < otherClients.length; i++) {
+            if (client != otherClients[i]) {
+              otherClients[i].send(draw_data);
+            }
+          }
+        });
+
+      });
     }
-  });
+  }
+
+  client.on('message', connector);
 
 });
