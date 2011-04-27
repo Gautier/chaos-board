@@ -89,7 +89,9 @@ socket.on('connection', function(client){
   });
 
   client.on('disconnect', function() {
-    clients[board.boardId].pop(client);
+    if (board != null) {
+      clients[board.boardId].pop(client);
+    }
   });
 
 });
