@@ -27,6 +27,17 @@ function parseCoords (location) {
   return {x: 0, y: 0};
 }
 
+function parseQueryString(q) {
+  var split = q.substr(1).split("&");
+  var ret = {};
+  for (var i=0; i < split.length; i++) {
+    var current = split[i].split("=");
+    var key = current[0], value = current[1];
+    ret[key] = value;
+  }
+  return ret;
+}
+
 
 function Pen(ctx, color) {
   var last_point = {x: 0, y: 0};
@@ -135,6 +146,16 @@ function Pen(ctx, color) {
 
     canvas = document.getElementById("c");
     var form = document.forms["login-form"];
+
+    // skip the form if the color is given in the url
+    if (document.location.search)  {
+      var query = parseQueryString(document.location.search);
+      if (query.color) {
+        form.style.display = "none";
+        canvas.style.display = "block";
+        initBoard(query.color);
+      }
+    }
 
     form.onsubmit = function () {
       var myColor = form["login-color"].value || "red";
