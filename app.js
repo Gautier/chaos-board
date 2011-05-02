@@ -3,6 +3,7 @@ require.paths.unshift('./lib')
 var http = require('http'),
     db = require('db'),
     web = require('web'),
+    compressQueue = require('queue'),
     io = require('socket.io');
 
 var server = http.createServer(web.urls);
@@ -33,7 +34,7 @@ db.getStore(function (store) {
         boardClients.push(client);
 
         // push the saved drawings
-        for(var i = 0; i < board.drawingQueue.length; i++) {
+        for (var i = 0; i < board.drawingQueue.length; i++) {
           client.send(board.drawingQueue[i]);
         }
 
@@ -41,22 +42,23 @@ db.getStore(function (store) {
           boardClients.pop(client);
         });
 
-        client.on("message", function (draw_data) {
-          board.drawingQueue.push(draw_data);
-
-          if(savingQueueTimer != null) {
-            clearTimeout(savingQueueTimer);
-          }
-          savingQueueTimer = setTimeout(function (_board) {
+        var dbQueue = new compressQueue.Queue(function (compressed) {
+          store.getBoard(data.boardId, function (err, _board) {
+            _board.drawingQueue.push(compressed);
             store.saveBoard(_board);
-          }, 2000, board)
+          });
+        }, 3000);
 
+        var liveQueue = new compressQueue.Queue(function (compressed) {
           for (var i = 0; i < boardClients.length; i++) {
             if (client != boardClients[i]) {
-              boardClients[i].send(draw_data);
+              boardClients[i].send(compressed);
             }
           }
-        });
+        }, 20);
+
+        client.on("message", function (draw_data) {
+          liveQueue.feed(draw_data);
 
       });
     });

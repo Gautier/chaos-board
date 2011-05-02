@@ -226,25 +226,21 @@ function Pen(ctx, color) {
     }
 
     socket.on('connect', function(){
-      // XXX bad way of doing this
+      // XXX bad way of doing this, look into backbone.js etc.
       var boardId = document.location.pathname.split("/")[2];
       socket.send({command: "connect", boardId: boardId});
     });
 
     var pens = {};
     socket.on('message', function(data){
-        var x = data.x - coords.x,
-            y = data.y - coords.y;
-
         if (!(data.color in pens)) {
           pens[data.color] = new Pen(ctx, data.color);
         }
         var pen = pens[data.color];
 
-        if (data.down) {
-          pen.down(x, y);
-        } else {
-          pen.move(x, y);
+        pen.down(data.x[0] - coords.x, data.y[0] - coords.y);
+        for(var i = 1; i < data.x.length; i++) {
+          pen.move(data.x[i] - coords.x, data.y[i] - coords.y);
         }
     });
 
