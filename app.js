@@ -59,6 +59,7 @@ db.getStore(function (store) {
 
         client.on("message", function (draw_data) {
           liveQueue.feed(draw_data);
+        });
 
       });
     });
