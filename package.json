@@ -1,8 +1,14 @@
 {
   "name": "ChaosBoard",
   "version" : "0.0.2",
-  "main" : "server.js"
+  "main" : "server.js",
   "dependencies": {
-    "socket.io" : ">=0.6.16"
+    "socket.io" : ">=0.6.16",
+    "node-uuid" : ">=1.0",
+    "clutch" : "",
+    "mongodb" : "",
+    "async" : "",
+    "canvas" : "",
+    "mime" : ">=1.2.1"
   }
 }

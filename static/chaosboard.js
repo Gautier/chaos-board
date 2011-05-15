@@ -27,20 +27,14 @@ function parseCoords (location) {
   return {x: 0, y: 0};
 }
 
-function parseQueryString(q) {
-  var split = q.substr(1).split("&");
-  var ret = {};
-  for (var i=0; i < split.length; i++) {
-    var current = split[i].split("=");
-    var key = current[0], value = current[1];
-    ret[key] = value;
-  }
-  return ret;
-}
 
-
-function Pen(ctx, color) {
+function Pen(ctx, startColor) {
   var last_point = {x: 0, y: 0};
+  var color = startColor;
+
+  this.setColor = function (newColor) {
+    color = newColor;
+  }
 
   this.down = function (x, y) {
     last_point.x = x;
@@ -67,11 +61,16 @@ function Pen(ctx, color) {
   }
 }
 
+var DEFAULT_COLOR = "red";
+var myPen = null;
+
 (function (window) {
   var canvas = null,
       windowWidth = null,
       windowHeight = null,
       coords = parseCoords(document.location);
+
+  window.myColor = DEFAULT_COLOR;
 
   function onChangedCoords() {
     coords = parseCoords(document.location);
@@ -145,34 +144,18 @@ function Pen(ctx, color) {
     windowHeight = window.innerHeight;
 
     canvas = document.getElementById("c");
-    var form = document.forms["login-form"];
 
-    // skip the form if the color is given in the url
-    if (document.location.search)  {
-      var query = parseQueryString(document.location.search);
-      if (query.color) {
-        form.style.display = "none";
-        canvas.style.display = "block";
-        initBoard(query.color);
-      }
-    }
-
-    form.onsubmit = function () {
-      var myColor = form["login-color"].value || "red";
-      form.style.display = "none";
-      canvas.style.display = "block";
-
-      initBoard(myColor);
-      return false;
-    }
+    initBoard();
   }
 
-  function initBoard (myColor) {
+  function initBoard () {
     var socket = new io.Socket("", {port: 8000}),
-        ctx = setupCanvas(),
-        myPen = new Pen(ctx, myColor, socket);
+        ctx = setupCanvas();
+
+    myPen = new Pen(ctx, myColor, socket);
 
     document.ontouchstart = function (e) {
+      if (e.target != canvas) return;
       var x = e.touches[0].pageX,
           y = e.touches[0].pageY;
 
@@ -184,6 +167,8 @@ function Pen(ctx, color) {
     }
 
     document.ontouchmove = function (e) {
+      if (e.target != canvas) return;
+
       var x = e.touches[0].pageX,
           y = e.touches[0].pageY;
 

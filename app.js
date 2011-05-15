@@ -19,7 +19,12 @@ db.getStore(function (store) {
       // First message must be a connect
       if (!("command" in data) || data.command != "connect") {
         client.send({command: "error", message: "no such board"});
-        client.disconnect();
+        try {
+          client.disconnect();
+        } catch(e) {
+          // alright, probably not connected properly anyway
+          // XXX find out this happens sometimes
+        }
         return;
       }
 
@@ -59,6 +64,7 @@ db.getStore(function (store) {
 
         client.on("message", function (draw_data) {
           liveQueue.feed(draw_data);
+          dbQueue.feed(draw_data);
         });
 
       });
